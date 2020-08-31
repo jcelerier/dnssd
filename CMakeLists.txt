@@ -10,6 +10,10 @@ include(CMakePackageConfigHelpers)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(_PROJECT_ROOT ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "Root" FORCE)
 
+option(DNSSD_BUILD_SHARED "Build a shared library" ON)
+option(DNSSD_BUILD_STATIC "Build a static library" ON)
+option(DNSSD_BUILD_EXAMPLES "Build usage examples" ON)
+
 enable_testing()
 
 #
@@ -49,69 +53,73 @@ else()
 endif()
 
 # Shared library
-add_library(dnssd SHARED ${source_c_files} ${shared_c_files})
-set_property(TARGET dnssd PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(dnssd
-    PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    PUBLIC
-        $<INSTALL_INTERFACE:include>
-)
-
-if(WIN32)
-    target_link_libraries(dnssd
-        PRIVATE ws2_32
-        PRIVATE iphlpapi
-        PRIVATE secur32
-        PRIVATE crypt32
-    )
-    set_target_properties(dnssd PROPERTIES PREFIX "")
-else()
-    # todo
+if(DNSSD_BUILD_SHARED)
+  add_library(dnssd SHARED ${source_c_files} ${shared_c_files})
+  set_property(TARGET dnssd PROPERTY POSITION_INDEPENDENT_CODE ON)
+  target_include_directories(dnssd
+      PUBLIC
+          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+          $<INSTALL_INTERFACE:include>
+  )
+  
+  if(WIN32)
+      target_link_libraries(dnssd
+          PRIVATE ws2_32
+          PRIVATE iphlpapi
+          PRIVATE secur32
+          PRIVATE crypt32
+      )
+      set_target_properties(dnssd PROPERTIES PREFIX "")
+  else()
+      # todo
+  endif()
 endif()
 
 # Static library
-add_library(dnssd-static STATIC ${source_c_files})
-set_property(TARGET dnssd-static PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(dnssd-static
-    PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    PUBLIC
-        $<INSTALL_INTERFACE:include>
-)
-
-if(WIN32)
-    target_sources(dnssd-static 
-        PRIVATE
-            src/dllmain.c
-    )
-    target_compile_definitions(dnssd-static
-        PRIVATE
-            mdns_STATIC
-    )
-    target_link_libraries(dnssd-static
-        PUBLIC ws2_32
-        PUBLIC iphlpapi
-        PUBLIC secur32
-        PUBLIC crypt32
-    )
-    set_target_properties(dnssd-static PROPERTIES PREFIX "")
-else()
-    # todo
+if(DNSSD_BUILD_STATIC)
+  add_library(dnssd-static STATIC ${source_c_files})
+  set_property(TARGET dnssd-static PROPERTY POSITION_INDEPENDENT_CODE ON)
+  target_include_directories(dnssd-static      
+      PUBLIC
+          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+          $<INSTALL_INTERFACE:include>
+  )
+  
+  if(WIN32)
+      target_sources(dnssd-static 
+          PRIVATE
+              src/dllmain.c
+      )
+      target_compile_definitions(dnssd-static
+          PRIVATE
+              mdns_STATIC
+      )
+      target_link_libraries(dnssd-static
+          PUBLIC ws2_32
+          PUBLIC iphlpapi
+          PUBLIC secur32
+          PUBLIC crypt32
+      )
+      set_target_properties(dnssd-static PROPERTIES PREFIX "")
+  else()
+      # todo
+  endif()
 endif()
 
-add_executable(dns-sd test/dns-sd.c test/ClientCommon.c)
-set_property(TARGET dns-sd PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(dns-sd PUBLIC src PUBLIC test)
-target_compile_definitions(dns-sd
-    PRIVATE _CONSOLE
-    PRIVATE NOT_HAVE_GETOPT
-    PRIVATE NOT_HAVE_SETLINEBUF
-)
-target_link_libraries(dns-sd PRIVATE dnssd)
-target_link_libraries(dns-sd
-    PRIVATE ws2_32
-)
+if(DNSSDS_BUILD_EXAMPLES)
+  add_executable(dns-sd test/dns-sd.c test/ClientCommon.c)
+  set_property(TARGET dns-sd PROPERTY POSITION_INDEPENDENT_CODE ON)
+  target_include_directories(dns-sd PUBLIC src PUBLIC test)
+  target_compile_definitions(dns-sd
+      PRIVATE _CONSOLE
+      PRIVATE NOT_HAVE_GETOPT
+      PRIVATE NOT_HAVE_SETLINEBUF
+  )
+  target_link_libraries(dns-sd PRIVATE dnssd)
+  target_link_libraries(dns-sd
+      PRIVATE ws2_32
+  )
+endif()
 
 # Create and install a config file for making the library useable from CMake
 configure_package_config_file(
@@ -126,13 +134,29 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
-install(
-    TARGETS dnssd dnssd-static
-    EXPORT DNSSDTargets
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-)
+if(DNSSD_BUILD_SHARED)
+  export(TARGETS dnssd FILE "${PROJECT_BINARY_DIR}/DNSSDTargets.cmake")
+
+  install(
+      TARGETS dnssd
+      EXPORT DNSSDTargets
+      RUNTIME DESTINATION bin
+      LIBRARY DESTINATION lib
+      ARCHIVE DESTINATION lib
+  )
+endif()
+
+if(DNSSD_BUILD_STATIC)
+  export(TARGETS dnssd-static FILE "${PROJECT_BINARY_DIR}/DNSSDStaticTargets.cmake")
+
+  install(
+      TARGETS dnssd-static
+      EXPORT DNSSDTargets
+      RUNTIME DESTINATION bin
+      LIBRARY DESTINATION lib
+      ARCHIVE DESTINATION lib
+  )
+endif()
 
 install(
     FILES
