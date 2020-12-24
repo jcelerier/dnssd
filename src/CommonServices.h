@@ -259,13 +259,13 @@ extern "C" {
         #pragma warning( disable:4127 ) // Disable "conditional expression is constant" warning for debug macros.
         #pragma warning( disable:4706 ) // Disable "assignment within conditional expression" for Microsoft headers.
 
-    #elif ( defined( __clang__ ) )
+    #elif ( defined( __clang__ ) || defined ( __GNUC__ ) )
         #include    <stdint.h>
     #endif
 
     #include    <windows.h>
     #include    <winsock2.h>
-    #include    <Ws2tcpip.h>
+    #include    <ws2tcpip.h>
 
 
     #if ( defined( _MSC_VER ) )
@@ -476,7 +476,7 @@ typedef int socklen_t;
 // - Windows
 
 #if ( TARGET_LANGUAGE_C_LIKE )
-    #if ( !defined(_SSIZE_T) && ( TARGET_OS_WIN32 || !defined( _BSD_SSIZE_T_DEFINED_ ) ) && !TARGET_OS_FREEBSD && !TARGET_OS_LINUX && !TARGET_OS_VXWORKS && !TARGET_OS_MAC && !defined(__clang__))
+    #if ( !defined(_SSIZE_T) && !defined(_SSIZE_T_DEFINED) && ( TARGET_OS_WIN32 || !defined( _BSD_SSIZE_T_DEFINED_ ) ) && !TARGET_OS_FREEBSD && !TARGET_OS_LINUX && !TARGET_OS_VXWORKS && !TARGET_OS_MAC && !defined(__clang__))
 typedef int ssize_t;
     #endif
 #endif
